@@ -13,6 +13,9 @@
     "globe/globe.grok.js",
     "sankey/sankey.js",
     "sankey/sankey.css",
-    "sunburst/sunburst.js"
+    "sunburst/sunburst.js",
+    "radar/radar.css",
+    "radar/radar.js",
+    "radar/radar.grok.js"
   ]
 }

@@ -24,6 +24,14 @@ class ViewersPackage extends DG.Package {
         return new GlobeViewer(this.webRoot + '/globe/');
     }
 
+    //name: RadarChart
+    //description: Creates a Radar Chart
+    //tags: viewer
+    //output: viewer result
+    radarViewer() {
+        return new RadarViewer();
+    }
+
     //name: flagCellRenderer
     //tags: cellRenderer, cellRenderer-flag
     //meta-cell-renderer-sem-type: flag
