@@ -96,14 +96,9 @@ export class RadarChart {
 
 			if (axisValues.some(v => typeof v === typeof '')) {
 
-				const comparer = (a: string | null, b: string | null) =>
-					a === null ? -1 : b === null ? 1 : a.localeCompare(b);
 				const domain = [...new Set(axisValues as Array<string | undefined>)]
-					//Array.sort() does not support sorting values with undefined
-					//So replace them to nulls, sort and then replace nulls back to undefineds
-					.map(v => v === undefined ? null : v)
-					.sort(comparer)
-					.map(v => v === null ? '' : v);
+					.map(v => v || '')
+					.sort();
 
 				rScales[a] = d3.scalePoint()
 					.range([0, radius])
