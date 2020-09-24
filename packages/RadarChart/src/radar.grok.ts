@@ -69,7 +69,7 @@ export class RadarViewer extends DG.JsViewer {
 
         const data: RadarChartData[] = [];
 
-        const titleCol = columns.find(c => c.name === this.titleColumn);
+        const titleCol = this.dataFrame.columns.toList().find(c => c.name === this.titleColumn);
         const rowsToShow = Math.min(this.numberOfRowsToShow, this.dataFrame.rowCount);
         const titles = Array.from(
             {length: rowsToShow},
