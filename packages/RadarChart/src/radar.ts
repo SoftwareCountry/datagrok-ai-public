@@ -69,62 +69,28 @@ export class RadarChart {
 		legend: false as RadarChartLegend
 	};
 
-	constructor(public parent_selector: string, public data: RadarChartData[], public options?: RadarChartConfig) {
+	private readonly axisNames: string[];
+	private readonly radius: number;
+	private readonly angleSlice: number;
+	private readonly rScales: {[key: string]: RadarChartScaleFunc};
+
+	constructor(
+		public readonly parent_selector: string,
+		public readonly data: RadarChartData[],
+		public readonly options?: RadarChartConfig
+	) {
+		this.updateConfig();
+
+		this.axisNames = this.data[0].axes.map((i, _) => i.axis);
+		const total = this.axisNames.length;
+		this.radius = Math.min(
+				this.cfg.w/2 - this.cfg.margin.left - this.cfg.margin.right,
+				this.cfg.h/2 - this.cfg.margin.top - this.cfg.margin.bottom);
+		this.angleSlice = Math.PI * 2 / total;
+		this.rScales = this.getAxisScales();
 	}
 
 	public draw() {
-
-		//Put all of the options into a variable called this.cfg
-		if(undefined !== this.options){
-			for(const [k, v] of Object.entries(this.options)){
-				if(v !== undefined){ (<any>this.cfg)[k] = v }
-			}//for i
-		}//if
-
-		const allAxis = this.data[0].axes.map((i, j) => i.axis),	//Names of each axis
-			total = allAxis.length,					//The number of different axes
-			radius = Math.min(
-				this.cfg.w/2 - this.cfg.margin.left - this.cfg.margin.right,
-				this.cfg.h/2 - this.cfg.margin.top - this.cfg.margin.bottom), 	//Radius of the outermost circle
-			Format = d3.format(this.cfg.format),			 	//Formatting
-			angleSlice = Math.PI * 2 / total;		//The width in radians of each 'slice'
-
-		const rScales: {[key: string]: RadarChartScaleFunc}={}
-
-		allAxis.forEach(a => {
-			const axisValues = this.data.map(d => d.axes.find(ax => ax.axis === a)?.value);
-
-			if (axisValues.some(v => typeof v === typeof '')) {
-
-				const domain = [...new Set(axisValues as Array<string | undefined>)]
-					.map(v => v || '')
-					.sort();
-
-				rScales[a] = d3.scalePoint()
-					.range([0, radius])
-					.domain(domain)
-					.padding(0.2) as RadarChartScaleFunc;
-
-			} else if (axisValues.some(v => v instanceof Date)){
-				const dateValues = axisValues.filter(d => d !== undefined) as Array<Date>
-				rScales[a] = d3.scaleTime()
-					.range([0, radius])
-					.domain([
-						d3.min(dateValues) || new Date(),
-						d3.max(dateValues) || new Date()
-					]) as RadarChartScaleFunc;
-
-			} else {
-				const numberValues = axisValues.filter(d => d !== undefined) as Array<number>
-				rScales[a] = d3.scaleLinear()
-					.range([0, radius])
-					.domain([
-						d3.min(numberValues) || 0,
-						d3.max(numberValues) || 0
-					]) as RadarChartScaleFunc;
-			}
-		});
-
 		/////////////////////////////////////////////////////////
 		//////////// Create the container SVG and g /////////////
 		/////////////////////////////////////////////////////////
@@ -167,7 +133,7 @@ export class RadarChart {
 			.enter()
 				.append('circle')
 				.attr('class', 'gridCircle')
-				.attr('r', d => radius / this.cfg.levels * d)
+				.attr('r', d => this.radius / this.cfg.levels * d)
 				.style('fill', '#CDCDCD')
 				.style('stroke', '#CDCDCD')
 				.style('fill-opacity', this.cfg.opacityCircles)
@@ -179,11 +145,11 @@ export class RadarChart {
 			.enter().append('text')
 				.attr('class', 'axisLabel')
 				.attr('x', 4)
-				.attr('y', d => -d * radius / this.cfg.levels)
+				.attr('y', d => -d * this.radius / this.cfg.levels)
 				.attr('dy', '0.4em')
 				.style('font-size', '10px')
 				.attr('fill', '#737373')
-				.text(d => Format(d / this.cfg.levels));
+				.text(d => this.format(d / this.cfg.levels));
 
 		/////////////////////////////////////////////////////////
 		//////////////////// Draw the axes //////////////////////
@@ -191,7 +157,7 @@ export class RadarChart {
 
 		//Create the straight lines radiating outward from the center
 		const axis = axisGrid.selectAll('.axis')
-			.data(allAxis)
+			.data(this.axisNames)
 			.enter()
 			.append('g')
 			.attr('class', 'axis');
@@ -199,8 +165,8 @@ export class RadarChart {
 		axis.append('line')
 			.attr('x1', 0)
 			.attr('y1', 0)
-			.attr('x2', (d, i) => radius * 1.1 * cos(angleSlice * i - HALF_PI))
-			.attr('y2', (d, i) => radius * 1.1 * sin(angleSlice * i - HALF_PI))
+			.attr('x2', (d, i) => this.radius * 1.1 * cos(this.angleSlice * i - HALF_PI))
+			.attr('y2', (d, i) => this.radius * 1.1 * sin(this.angleSlice * i - HALF_PI))
 			.attr('class', 'line')
 			.style('stroke', 'white')
 			.style('stroke-width', '2px');
@@ -211,8 +177,8 @@ export class RadarChart {
 			.style('font-size', '11px')
 			.attr('text-anchor', 'middle')
 			.attr('dy', '0.35em')
-			.attr('x', (d,i) => radius * 1.1 * cos(angleSlice * i - HALF_PI))
-			.attr('y', (d,i) => radius * 1.1 * sin(angleSlice * i - HALF_PI))
+			.attr('x', (d,i) => this.radius * 1.1 * cos(this.angleSlice * i - HALF_PI))
+			.attr('y', (d,i) => this.radius * 1.1 * sin(this.angleSlice * i - HALF_PI))
 			.text(d => d)
 			.call(this.wrap, this.cfg.wrapWidth);
 
@@ -223,8 +189,8 @@ export class RadarChart {
 		//The radial line function
 		const radarLine = d3.lineRadial<RadarChartAxis>()
 			.curve(d3.curveLinearClosed)
-			.radius(d => rScales[d.axis](d.value) || 0)
-			.angle((d,i) => i * angleSlice);
+			.radius(d => this.rScales[d.axis](d.value) || 0)
+			.angle((d,i) => i * this.angleSlice);
 
 		if(this.cfg.roundStrokes) {
 			radarLine.curve(d3.curveCardinalClosed)
@@ -276,8 +242,8 @@ export class RadarChart {
 			.append('circle')
 			.attr('class', 'radarCircle')
 			.attr('r', this.cfg.dotRadius)
-			.attr('cx', (d,i) => (rScales[d.axis](d.value) || 0) * cos(angleSlice * i - HALF_PI))
-			.attr('cy', (d,i) => (rScales[d.axis](d.value) || 0) * sin(angleSlice * i - HALF_PI))
+			.attr('cx', (d,i) => (this.rScales[d.axis](d.value) || 0) * cos(this.angleSlice * i - HALF_PI))
+			.attr('cy', (d,i) => (this.rScales[d.axis](d.value) || 0) * sin(this.angleSlice * i - HALF_PI))
 			.style('fill', (d, i) => this.cfg.color(i))
 			.style('fill-opacity', 0.8);
 
@@ -297,8 +263,8 @@ export class RadarChart {
 			.enter().append('circle')
 			.attr('class', 'radarInvisibleCircle')
 			.attr('r', this.cfg.dotRadius * 1.5)
-			.attr('cx', (d,i) => (rScales[d.axis](d.value) || 0) * cos(angleSlice*i - HALF_PI))
-			.attr('cy', (d,i) => (rScales[d.axis](d.value) || 0) * sin(angleSlice*i - HALF_PI))
+			.attr('cx', (d,i) => (this.rScales[d.axis](d.value) || 0) * cos(this.angleSlice*i - HALF_PI))
+			.attr('cy', (d,i) => (this.rScales[d.axis](d.value) || 0) * sin(this.angleSlice*i - HALF_PI))
 			.style('fill', 'none')
 			.style('pointer-events', 'all')
 			.on('mouseover', function(d,i) {
@@ -373,17 +339,6 @@ export class RadarChart {
 		return svg;
 	}
 
-	private maxFromArr(arr: Array<number | undefined>) {
-		let max = 0;
-		arr.forEach(v =>{
-			if (v === undefined) {
-				return
-			}
-			max = v > max ? v : max
-		});
-		return max;
-	}
-
 	//Wraps SVG text - Taken from http://bl.ocks.org/mbostock/7555321
 	private wrap (text: d3.Selection<SVGTextElement, string, SVGGElement, unknown>, width: number) {
 		text.each(function() {
@@ -410,5 +365,56 @@ export class RadarChart {
 				}
 			}
 		});
-	}//wrap
+	}
+
+	private format(n: number) {
+		return d3.format(this.cfg.format)(n);
+	}
+
+	private updateConfig() {
+		if(undefined !== this.options){
+			for(const [k, v] of Object.entries(this.options)){
+				if(v !== undefined){ (<any>this.cfg)[k] = v }
+			}
+		}
+	}
+
+	private getAxisScales(): {[key: string]: RadarChartScaleFunc} {
+		const rScales: {[key: string]: RadarChartScaleFunc}={}
+
+		this.axisNames.forEach(a => {
+			const axisValues = this.data.map(d => d.axes.find(ax => ax.axis === a)?.value);
+
+			if (axisValues.some(v => typeof v === typeof '')) {
+
+				const domain = [...new Set(axisValues as Array<string | undefined>)]
+					.map(v => v || '')
+					.sort();
+
+				rScales[a] = d3.scalePoint()
+					.range([0, this.radius])
+					.domain(domain)
+					.padding(0.2) as RadarChartScaleFunc;
+
+			} else if (axisValues.some(v => v instanceof Date)){
+				const dateValues = axisValues.filter(d => d !== undefined) as Array<Date>
+				rScales[a] = d3.scaleTime()
+					.range([0, this.radius])
+					.domain([
+						d3.min(dateValues) || new Date(),
+						d3.max(dateValues) || new Date()
+					]) as RadarChartScaleFunc;
+
+			} else {
+				const numberValues = axisValues.filter(d => d !== undefined) as Array<number>
+				rScales[a] = d3.scaleLinear()
+					.range([0, this.radius])
+					.domain([
+						d3.min(numberValues) || 0,
+						d3.max(numberValues) || 0
+					]) as RadarChartScaleFunc;
+			}
+		});
+		return rScales;
+	}
 }
