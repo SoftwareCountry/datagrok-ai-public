@@ -4,6 +4,7 @@ import { RadarChart, RadarChartData } from './radar';
 const COLUMNS_TO_SHOW_PROPERTY_NAME = 'columnsToShowList'
 const ROWS_TO_SHOW_PROPERTY_NAME = 'rowsToShow'
 const LEVELS_PROPERTY_NAME = 'levels';
+const TITLE_COLUMN_PROPERTY_NAME = 'titleColumnName';
 
 export class RadarViewer extends DG.JsViewer {
     public data: RadarChartData[] = [];
@@ -15,6 +16,7 @@ export class RadarViewer extends DG.JsViewer {
         const colsToShowProperty = this.getProperty(COLUMNS_TO_SHOW_PROPERTY_NAME);
         colsToShowProperty.propertyType = DG.VIEWER_PROPERTY_TYPE.COLUMN_LIST;
 
+        this.string(TITLE_COLUMN_PROPERTY_NAME, '');
         this.int(ROWS_TO_SHOW_PROPERTY_NAME, 3);
 
         this.int(LEVELS_PROPERTY_NAME, 3);
@@ -49,7 +51,12 @@ export class RadarViewer extends DG.JsViewer {
             margin: {
                 top: height * 0.05, bottom: height * 0.05, left: width * 0.05, right: width * 0.05
             },
-            levels: this.numberOfLevels
+            levels: this.numberOfLevels,
+            legend: {
+                title: 'Legend',
+                translateX: -width * 0.2,
+                translateY: 0
+            }
         }
         new RadarChart('.radar', this.data, options).draw();
     }
@@ -62,14 +69,20 @@ export class RadarViewer extends DG.JsViewer {
 
         const data: RadarChartData[] = [];
 
+        const titleCol = columns.find(c => c.name === this.titleColumn);
+        const rowsToShow = Math.min(this.numberOfRowsToShow, this.dataFrame.rowCount);
+        const titles = Array.from(
+            {length: rowsToShow},
+            ((_, i) => titleCol ? titleCol.get(i) : (i + 1).toString()));
+
         for (const column of columns) {
             const colValues = column.toList();
             const rawValues = column.getRawData();
 
-            for (let r = 0; r < this.numberOfRowsToShow && r < colValues.length; r++) {
-                const colName = column.name;
+            const colName = column.name;
+            for (let r = 0; r < rowsToShow; r++) {
                 if (r >= data.length) {
-                    data.push({'axes': [], name: (r + 1).toString()});
+                    data.push({'axes': [], name: titles[r]});
                 } 
 
                 const value = colValues[r] === undefined
@@ -93,5 +106,9 @@ export class RadarViewer extends DG.JsViewer {
 
     get numberOfLevels() {
         return this.getProperty(LEVELS_PROPERTY_NAME).get(null) || 3;
+    }
+
+    get titleColumn() {
+        return this.getProperty(TITLE_COLUMN_PROPERTY_NAME).get(null) || '';
     }
 }

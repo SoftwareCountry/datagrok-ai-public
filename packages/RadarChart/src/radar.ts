@@ -344,31 +344,31 @@ export class RadarChart {
 					.attr('fill', '#404040')
 					.text(this.cfg.legend.title);
 			}
-			let legend = legendZone.append('g')
+			const legend = legendZone.append('g')
 				.attr('class', 'legend')
 				.attr('height', 100)
 				.attr('width', 200)
 				.attr('transform', `translate(${this.cfg.legend.translateX},${this.cfg.legend.translateY + 20})`);
 			// Create rectangles markers
 			legend.selectAll('rect')
-			.data(names)
-			.enter()
-			.append('rect')
-			.attr('x', this.cfg.w - 65)
-			.attr('y', (d,i) => i * 20)
-			.attr('width', 10)
-			.attr('height', 10)
-			.style('fill', (d,i) => this.cfg.color(i));
+				.data(names)
+				.enter()
+					.append('rect')
+					.attr('x', this.cfg.w - 65)
+					.attr('y', (d,i) => i * 20)
+					.attr('width', 10)
+					.attr('height', 10)
+					.style('fill', (d,i) => this.cfg.color(i));
 			// Create labels
 			legend.selectAll('text')
-			.data(names)
-			.enter()
-			.append('text')
-			.attr('x', this.cfg.w - 52)
-			.attr('y', (d,i) => i * 20 + 9)
-			.attr('font-size', '11px')
-			.attr('fill', '#737373')
-			.text(d => d);
+				.data(names)
+				.enter()
+					.append('text')
+					.attr('x', this.cfg.w - 52)
+					.attr('y', (d,i) => i * 20 + 9)
+					.attr('font-size', '11px')
+					.attr('fill', '#737373')
+					.text(d => d);
 		}
 		return svg;
 	}
